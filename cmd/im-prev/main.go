@@ -14,20 +14,6 @@ import (
 	clipboard "golang.design/x/clipboard"
 )
 
-// var imageBorderStyle = lipgloss.NewStyle().
-// 	Border(lipgloss.RoundedBorder()).
-// 	Width(config.C.ImageBorderWidth).
-// 	Height(config.C.ImageBorderHeight).
-// 	Align(lipgloss.Center, lipgloss.Center)
-
-// var selectorBorderStyle = lipgloss.NewStyle().
-// 	Border(lipgloss.RoundedBorder()).
-// 	Width(config.C.SelectorBorderWidth).
-// 	Height(config.C.SelectorBorderHeight).
-// 	Align(lipgloss.Left, lipgloss.Center)
-
-// var boldStyle = lipgloss.NewStyle().Bold(true)
-
 func imageBorderStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -53,32 +39,22 @@ func boldStyle() lipgloss.Style {
 }
 
 type model struct {
-	fileChoices    []string
+	imEntries      []imprev.ImageEntry
 	fileShortNames []string
-	chafaImages    []string
 	cursor         int
 }
 
 func initialModel(imEntries []imprev.ImageEntry) model {
-
-	fChoices := make([]string, len(imEntries))
-	cImages := make([]string, len(imEntries))
-
-	for i, imEntry := range imEntries {
-		fChoices[i] = imEntry.Path
-		cImages[i] = imEntry.ChafaImage
-	}
-
-	fsn := make([]string, len(fChoices))
-	for index, f := range fChoices {
-		parts := strings.Split(f, "/")
-		fsn[index] = parts[len(parts)-1]
+	// Cache short names once
+	fsn := make([]string, len(imEntries))
+	for i, entry := range imEntries {
+		parts := strings.Split(entry.Path, "/")
+		fsn[i] = parts[len(parts)-1]
 	}
 
 	return model{
-		fileChoices:    fChoices,
+		imEntries:      imEntries,
 		fileShortNames: fsn,
-		chafaImages:    cImages,
 		cursor:         0,
 	}
 }
@@ -87,33 +63,45 @@ func (m model) Init() tea.Cmd {
 	return tea.ClearScreen
 }
 
+func (m *model) loadImagesIfNeeded() {
+	// Calculate which images should be loaded
+	halfWay := config.C.MaxFiles / 2
+	startRange := m.cursor - halfWay - config.C.FileViewBufferSize
+	// endRange := m.cursor + halfWay
+
+	// Clamp to valid indices
+	if startRange < 0 {
+		startRange = 0
+	}
+	// if endRange >= len(m.imEntries) {
+	// 	endRange = len(m.imEntries) - 1
+	// }
+
+	// Update (only loads images that aren't already loaded)
+	updated, _ := imprev.UpdateChafaImages(m.imEntries, startRange)
+	m.imEntries = updated
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
-	// Is it a key press?
 	case tea.KeyMsg:
-
-		// Cool, what was the actual key pressed?
 		switch msg.String() {
-
-		// These keys should exit the program.
 		case "ctrl+c", "q", "Q":
 			return m, tea.Quit
 
-		// The "up" and "k" keys move the cursor up
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
+			m.loadImagesIfNeeded()
 
-		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			if m.cursor < len(m.fileChoices)-1 {
+			if m.cursor < len(m.imEntries)-1 { // Changed
 				m.cursor++
 			}
-
+			m.loadImagesIfNeeded()
 		case "c", "C":
-			copyImage(m.fileChoices[m.cursor])
+			copyImage(m.imEntries[m.cursor].Path) // Changed
 		}
 	}
 	return m, nil
@@ -157,31 +145,27 @@ func truncateText(s string, max int) string {
 }
 
 func constructFileList(m model) ([]string, int) {
-	if len(m.fileChoices) <= config.C.MaxFiles {
+	if len(m.imEntries) <= config.C.MaxFiles { // Changed
 		return m.fileShortNames, m.cursor
 	}
 
 	halfWay := config.C.MaxFiles / 2
 
-	// cursor is near top of list still doesn't need to be shifted
 	if m.cursor < halfWay {
 		return m.fileShortNames[:config.C.MaxFiles], m.cursor
 	}
 
-	// cursor is near bottom of list
-	if m.cursor >= len(m.fileChoices)-halfWay {
+	if m.cursor >= len(m.imEntries)-halfWay { // Changed
 		cursorPos := m.cursor - (len(m.fileShortNames) - config.C.MaxFiles)
 		return m.fileShortNames[len(m.fileShortNames)-config.C.MaxFiles:], cursorPos
 	}
 
-	// files need to be shifted
 	top := m.cursor - halfWay
 	bottom := m.cursor + halfWay
 	return m.fileShortNames[top:bottom], halfWay
 }
 
 func (m model) View() string {
-
 	title := "\n Select an image to preview :)"
 	fileList := ""
 
@@ -197,8 +181,6 @@ func (m model) View() string {
 	}
 
 	fileList = selectorBorderStyle(m).Render(fileList)
-
-	// center title over selector
 	listWidth := lipgloss.Width(fileList)
 	centeredTitle := lipgloss.NewStyle().
 		Width(listWidth).
@@ -206,21 +188,19 @@ func (m model) View() string {
 		Render(title)
 
 	fileList = centeredTitle + "\n" + fileList
-	// Build the image preview (right side)
+
 	rightSide := ""
-	if m.cursor >= 0 && m.cursor < len(m.chafaImages) {
-		image := imageBorderStyle().Render(m.chafaImages[m.cursor])
+	if m.cursor >= 0 && m.cursor < len(m.imEntries) { // Changed
+		image := imageBorderStyle().Render(m.imEntries[m.cursor].ChafaImage) // Changed
 		caption := "(C)opy (Q)uit"
 
-		// Stack image and text vertically
 		rightSide = lipgloss.JoinVertical(
-			lipgloss.Left, // alignment
+			lipgloss.Left,
 			image,
 			caption,
 		)
 	}
 
-	// Join them horizontally
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		fileList,

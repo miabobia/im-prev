@@ -9,6 +9,14 @@ image-border-height = 24
 selector-border-width = 85
 selector-border-height = 10
 
+# chafa system args
+chafa-max-width = 50
+chafa-max-height = 20
+chafa-default-symbols = "braille"
+
+# adding buffering for UX smoothness
+file-view-buffer-size = 10
+
 
 
 foreground-color = "#e6aade"
