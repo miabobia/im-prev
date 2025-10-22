@@ -1,0 +1,15 @@
+# file selector formatting
+max-files = 21
+max-file-name-length = 75
+
+# borders
+image-border-width = 54
+image-border-height = 24
+
+selector-border-width = 85
+selector-border-height = 10
+
+
+
+foreground-color = "#e6aade"
+background-color = "#aad8e6"
