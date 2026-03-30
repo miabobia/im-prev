@@ -15,6 +15,10 @@ type Config struct {
 	ChafaMaxHeight       int    `toml:"chafa-max-height"`
 	ChafaDefaultSymbols  string `toml:"chafa-default-symbols"`
 	FileViewBufferSize   int    `toml:"file-view-buffer-size"`
+	ImageWidthRatio float32 `toml:"image-width-ratio"`
+	ImageHeightRatio float32 `toml:"image-height-ratio"`
+	SelectorWidthRatio float32 `toml:"selector-width-ratio"`
+	SelectorHeightRatio float32 `toml:"selector-height-ratio"`
 }
 
 var C *Config

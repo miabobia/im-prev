@@ -19,7 +19,7 @@ type ImageEntry struct {
 
 var chafaCfg ChafaConfig
 
-func getFiles(path string) ([]string, error) {
+func GetFiles(path string) ([]string, error) {
 	files := []string{}
 
 	entries, err := os.ReadDir(path)
@@ -50,7 +50,7 @@ type ChafaConfig struct {
 	SymbolArg string
 }
 
-func buildChafaConfig() (ChafaConfig, error) {
+func buildChafaConfig(width, height int) (ChafaConfig, error) {
 	chafaPath, err := exec.LookPath("chafa")
 	if err != nil {
 		return ChafaConfig{}, fmt.Errorf("chafa not found: %w", err)
@@ -58,17 +58,19 @@ func buildChafaConfig() (ChafaConfig, error) {
 
 	return ChafaConfig{
 		ChafaPath: chafaPath,
-		SizeArg:   fmt.Sprintf("%dx%d", config.C.ChafaMaxWidth, config.C.ChafaMaxHeight),
+		// SizeArg:   fmt.Sprintf("%dx%d", config.C.ChafaMaxWidth, config.C.ChafaMaxHeight),
+		SizeArg:   fmt.Sprintf("%dx%d", width, height),
 		SymbolArg: config.C.ChafaDefaultSymbols,
 	}, nil
 }
 
-func getChafaImage(cfg ChafaConfig, fileName string) (string, error) {
+// func getChafaImage(cfg ChafaConfig, fileName string) (string, error) {
+func GetChafaImage(symbolSet, size, path, fileName string) (string, error) {
 	cmd := exec.Command(
-		cfg.ChafaPath,
+		path,
 		fileName,
-		"--size", cfg.SizeArg,
-		"--symbols", cfg.SymbolArg,
+		"--size", size,
+		"--symbols", symbolSet,
 	)
 	stdout, err := cmd.Output()
 	if err != nil {
@@ -95,16 +97,16 @@ func UpdateChafaImages(imEntries []ImageEntry, startRange int) ([]ImageEntry, er
 		}
 		wg.Add(1)
 
-		go func(index int, file string) {
-			defer wg.Done()
+		// go func(index int, file string) {
+		// 	defer wg.Done()
 
-			chafaImage, err := getChafaImage(chafaCfg, file)
-			if err != nil {
-				fmt.Println(err.Error())
-				return
-			}
-			imEntries[index].ChafaImage = chafaImage
-		}(i, imEntries[i].Path)
+		// 	chafaImage, err := getChafaImage(chafaCfg, file)
+		// 	if err != nil {
+		// 		fmt.Println(err.Error())
+		// 		return
+		// 	}
+		// 	imEntries[index].ChafaImage = chafaImage
+		// }(i, imEntries[i].Path)
 	}
 	// for i, imEntry := range imEntries {
 	// 	fileName := imEntry.Path
@@ -120,7 +122,7 @@ func UpdateChafaImages(imEntries []ImageEntry, startRange int) ([]ImageEntry, er
 	// 	wg.Add(1)
 
 	// 	go func(index int, file string) {
-	// 		defer wg.Done()
+	// 		defer wg.Done	()
 
 	// 		chafaImage, err := getChafaImage(cfg, file)
 	// 		if err != nil {
@@ -154,7 +156,7 @@ func initImageEntries(fileArray []string) []ImageEntry {
 	return imEntries
 }
 
-func GetImageEntries(path string) ([]ImageEntry, error) {
+func GetImageEntries(path string, width, height int) ([]ImageEntry, error) {
 	_, err := exists(path)
 
 	if err != nil {
@@ -162,9 +164,9 @@ func GetImageEntries(path string) ([]ImageEntry, error) {
 		return []ImageEntry{}, err
 	}
 
-	chafaCfg, _ = buildChafaConfig()
+	chafaCfg, _ = buildChafaConfig(width, height)
 
-	fileArray, err := getFiles(path)
+	fileArray, err := GetFiles(path)
 
 	if err != nil {
 		fmt.Println(err.Error())

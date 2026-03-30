@@ -17,6 +17,15 @@ chafa-default-symbols = "braille"
 # adding buffering for UX smoothness
 file-view-buffer-size = 10
 
+# size ratios
+image-width-ratio = 0.4
+image-height-ratio = 0.4
+
+selector-width-ratio = 0.4
+selector-height-ratio = 0.4
+
+
+
 
 
 foreground-color = "#e6aade"
