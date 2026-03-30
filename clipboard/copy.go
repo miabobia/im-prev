@@ -116,10 +116,6 @@ func nonWaylandCopyImage(s string) error {
 	return nil
 }
 
-func Test() {
-	clip.Write(clip.FmtText, []byte("TEST"))
-}
-
 func GetClipboardManager() ClipboardManager {
 
 	clipboardMgr := ClipboardManager{}

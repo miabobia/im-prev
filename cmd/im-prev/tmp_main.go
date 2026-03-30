@@ -1,12 +1,15 @@
-// TODO
+// =TODO=
 // search bar
-// info section
 // directory jumping ?
 // recursive directory search
 // help
 // version
 // filename truncating
 // current directory
+
+// =IN=PROGRESS=
+// info section
+// fullscreen
 
 package main
 
@@ -37,16 +40,19 @@ type model struct {
 	clipboardManager clipboard.ClipboardManager
 	searchMode       bool
 	infoMode         bool
+	fullscreen       bool
 }
 
 type Layout struct {
-	ImageWidth     int
-	ImageHeight    int
-	SelectorWidth  int
-	SelectorHeight int
-	ChafaWidth     int
-	ChafaHeight    int
-	MaxFiles       int
+	ImageWidth            int
+	ImageHeight           int
+	SelectorWidth         int
+	SelectorHeight        int
+	ChafaWidth            int
+	ChafaHeight           int
+	MaxFiles              int
+	ImageFullscreenWidth  int
+	ImageFullscreenHeight int
 }
 
 type LoadState int
@@ -64,13 +70,7 @@ type Entry struct {
 }
 
 // Tea messages
-
 type imageLoadedMsg struct {
-	index int
-	image string
-}
-
-type imageUnloadedMsg struct {
 	index int
 	image string
 }
@@ -92,12 +92,6 @@ func loadImageCmd(chafaPath string, layout Layout, entry Entry, index int) tea.C
 	}
 }
 
-func unloadImageCmd(entry Entry, index int) tea.Cmd {
-	return func() tea.Msg {
-		return imageUnloadedMsg{index: index}
-	}
-}
-
 // generic helper func
 func Map[T, U any](s []T, f func(T) U) []U {
 	result := make([]U, len(s))
@@ -109,13 +103,15 @@ func Map[T, U any](s []T, f func(T) U) []U {
 
 func computeLayout(termW, termH int, cfg *config.Config) Layout {
 	return Layout{
-		ImageWidth:     int(float32(termW) * cfg.ImageWidthRatio),
-		ImageHeight:    int(float32(termH) * cfg.ImageHeightRatio),
-		SelectorWidth:  int(float32(termW) * cfg.SelectorWidthRatio),
-		SelectorHeight: int(float32(termH) * cfg.SelectorHeightRatio),
-		ChafaWidth:     int(float32(termW) * cfg.ImageWidthRatio),
-		ChafaHeight:    int(float32(termH) * cfg.ImageHeightRatio),
-		MaxFiles:       int(float32(termH) * cfg.SelectorHeightRatio),
+		ImageWidth:            int(float32(termW) * cfg.ImageWidthRatio),
+		ImageHeight:           int(float32(termH) * cfg.ImageHeightRatio),
+		SelectorWidth:         int(float32(termW) * cfg.SelectorWidthRatio),
+		SelectorHeight:        int(float32(termH) * cfg.SelectorHeightRatio),
+		ChafaWidth:            int(float32(termW) * cfg.ImageWidthRatio),
+		ChafaHeight:           int(float32(termH) * cfg.ImageHeightRatio),
+		MaxFiles:              int(float32(termH) * cfg.SelectorHeightRatio),
+		ImageFullscreenWidth:  int(float32(termW) * cfg.ImageFullscreenWidthRatio),
+		ImageFullscreenHeight: int(float32(termH) * cfg.ImageFullscreenHeightRatio),
 	}
 }
 
@@ -160,6 +156,30 @@ func fileInfoString(imageInfo filesystem.ImageInfo) string {
 	return s
 }
 
+func renderFullscreen(m model) string {
+
+	physicalWidth, _, _ := term.GetSize(int(os.Stdout.Fd()))
+
+	chafaImage, _ := imprev.GetChafaImage(
+		config.C.ChafaDefaultSymbols,
+		fmt.Sprintf("%dx%d", m.layout.ImageFullscreenWidth, m.layout.ImageFullscreenHeight),
+		m.chafaPath,
+		m.entries[m.cursor].name,
+	)
+	content := styles.ImageBorderStyle(m.layout.ImageFullscreenWidth, m.layout.ImageFullscreenHeight).
+		AlignHorizontal(lipgloss.Center).
+		Render(chafaImage)
+
+	centeredContent := lipgloss.PlaceHorizontal(
+		physicalWidth,
+		lipgloss.Center,
+		content,
+	)
+
+	return centeredContent
+
+}
+
 // Returns the full window range (all states)
 func getWindowRange(m model) (int, int) {
 	windowSize := 10
@@ -184,10 +204,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case imageLoadedMsg:
 		m.entries[msg.index].data = msg.image
 		m.entries[msg.index].loadState = Loaded
-
-	case imageUnloadedMsg:
-		m.entries[msg.index].data = "NOT\nLOADED"
-		m.entries[msg.index].loadState = Unloaded
 
 	case tea.WindowSizeMsg:
 		var cmds []tea.Cmd
@@ -269,14 +285,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "s":
 			// possible future feature idk rn
-			m.searchMode = true
+			if m.searchMode {
+				m.searchMode = false
+			} else {
+				m.searchMode = true
+			}
 
-		case "i":
+		case "i", "I":
 			if m.infoMode {
 				m.infoMode = false
 			} else {
 				m.infoMode = true
 			}
+
+		case "f", "F":
+			if m.fullscreen {
+				m.fullscreen = false
+			} else {
+				m.fullscreen = true
+			}
+
+		case "esc":
+			m.infoMode = false
+			m.fullscreen = false
+			m.searchMode = false
 
 		}
 	}
@@ -284,6 +316,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+
+	if m.fullscreen {
+		return renderFullscreen(m)
+	}
+
 	// title := "\n Select an image to preview :)"
 	fileList := ""
 
@@ -336,12 +373,6 @@ func (m model) View() string {
 }
 
 func main() {
-
-	// imPath := "/home/olive/Pictures/stock-images/17564.png"
-	// // getImageInfo(imPath)
-	// imInfo, err := filesystem.GetImageInfo(imPath)
-	// fmt.Println(imInfo)
-	// return
 
 	if err := config.Load("config/config.toml"); err != nil {
 		fmt.Println(err.Error())

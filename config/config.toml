@@ -19,11 +19,13 @@ file-view-buffer-size = 10
 
 # size ratios
 image-width-ratio = 0.4
-image-height-ratio = 0.4
+image-height-ratio = 0.7
 
 selector-width-ratio = 0.4
-selector-height-ratio = 0.4
+selector-height-ratio = 0.7
 
+fullscreen-image-width-ratio = 0.8
+fullscreen-image-height-ratio = 0.8
 
 
 
