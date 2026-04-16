@@ -27,6 +27,10 @@ selector-height-ratio = 0.7
 fullscreen-image-width-ratio = 0.8
 fullscreen-image-height-ratio = 0.8
 
+# minimum size for screen
+minimum-screen-width = 35
+minimum-screen-height = 15
+
 
 
 

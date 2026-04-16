@@ -21,6 +21,8 @@ type Config struct {
 	SelectorHeightRatio        float32 `toml:"selector-height-ratio"`
 	ImageFullscreenWidthRatio  float32 `toml:"fullscreen-image-width-ratio"`
 	ImageFullscreenHeightRatio float32 `toml:"fullscreen-image-height-ratio"`
+	MinimumScreenWidth         int     `toml:"minimum-screen-width"`
+	MinimumScreenHeight        int     `toml:"minimum-screen-height"`
 }
 
 var C *Config

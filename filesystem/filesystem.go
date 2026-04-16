@@ -6,6 +6,9 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/webp"
 )
 
 type ImageInfo struct {
@@ -15,6 +18,7 @@ type ImageInfo struct {
 	Width          string
 	Height         string
 	ImageFormat    string
+	ModifiedTime   string
 }
 
 func CreateImageDecodeConfig(path string) (image.Config, string, error) {
@@ -34,14 +38,18 @@ func CreateImageDecodeConfig(path string) (image.Config, string, error) {
 
 }
 
-func getFileSize(path string) (string, string, error) {
-
+func getFileInfo(path string) (os.FileInfo, error) {
 	f, err := os.Stat(path)
 
 	if err != nil {
 		fmt.Println(err)
-		return "", "", err
+		return f, err
 	}
+
+	return f, nil
+}
+
+func formatFileSize(bytes int64) (string, string, error) {
 
 	const (
 		KB = 1024
@@ -49,18 +57,17 @@ func getFileSize(path string) (string, string, error) {
 		GB = 1024 * MB
 	)
 
-	size := f.Size()
-	sizeString := fmt.Sprintf("%d", size)
+	sizeString := fmt.Sprintf("%d", bytes)
 	sizeFormat := "Bytes"
 	switch {
-	case size >= GB:
-		sizeString = fmt.Sprintf("%.2f", float64(size)/float64(GB))
+	case bytes >= GB:
+		sizeString = fmt.Sprintf("%.2f", float64(bytes)/float64(GB))
 		sizeFormat = "GB"
-	case size >= MB:
-		sizeString = fmt.Sprintf("%.2f", float64(size)/float64(MB))
+	case bytes >= MB:
+		sizeString = fmt.Sprintf("%.2f", float64(bytes)/float64(MB))
 		sizeFormat = "MB"
-	case size >= KB:
-		sizeString = fmt.Sprintf("%.2f", float64(size)/float64(KB))
+	case bytes >= KB:
+		sizeString = fmt.Sprintf("%.2f", float64(bytes)/float64(KB))
 		sizeFormat = "KB"
 	}
 
@@ -76,7 +83,14 @@ func GetImageInfo(path string) (ImageInfo, error) {
 		return ImageInfo{}, err
 	}
 
-	sizeString, sizeFormat, err := getFileSize(path)
+	fileInfo, err := getFileInfo(path)
+
+	if err != nil {
+		fmt.Println(err)
+		return ImageInfo{}, err
+	}
+
+	sizeString, sizeFormat, err := formatFileSize(fileInfo.Size())
 
 	if err != nil {
 		fmt.Println(err)
@@ -90,6 +104,7 @@ func GetImageInfo(path string) (ImageInfo, error) {
 		Width:          fmt.Sprintf("%d", decodeConfig.Width),
 		Height:         fmt.Sprintf("%d", decodeConfig.Height),
 		ImageFormat:    format,
+		ModifiedTime:   fileInfo.ModTime().Format("2006-01-02 15:04:05"),
 	}, nil
 
 }
